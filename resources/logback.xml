@@ -1,0 +1,15 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- encoder defaults to ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+        <encoder>
+            <!-- ensure logs including exceptions are a single line -->
+            <pattern>%date %-5level %logger{24} - %message - %replace(%xException){"\n", "\\n"}%nopex%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="ERROR">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <logger name="fluree.db" level="DEBUG"/>
+</configuration>

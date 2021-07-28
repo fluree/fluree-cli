@@ -1,0 +1,47 @@
+{:paths ["src" "resources"]
+ :deps  {org.clojure/clojure                 {:mvn/version "1.10.3"}
+         http.async.client/http.async.client {:git/url "https://github.com/fluree/http.async.client.git"
+                                              :sha     "c1223b8d2478e83814db6327127cea0d9ab26ef5"}
+         com.fluree/db                       {:git/url "https://github.com/fluree/db.git"
+                                              :sha     "67eab3b4255fb57d13b44ca747af6f12578ac6b5"}}
+ :aliases
+ {:test    {:extra-paths ["test"]
+            :extra-deps  {org.clojure/test.check {:mvn/version "1.1.0"}}}
+
+  :runner
+  {:extra-deps {io.github.cognitect-labs/test-runner
+                {:git/url "https://github.com/cognitect-labs/test-runner"
+                 :sha     "2d69f33d7980c3353b246c28f72ffeafbd9f2fab"}}
+   :exec-fn    cognitect.test-runner.api/test}
+
+  :uberjar {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.0.216"}}
+            :exec-fn      hf.depstar/uberjar
+            :exec-args    {:aot        true
+                           :jar        "fluree-cli.jar"
+                           :main-class "fluree.fluree-cli"
+                           :sync-pom   true}}
+
+  :native-image
+  {:main-opts  ["-m" "clj.native-image" "fluree.fluree-cli"
+                "-H:Name=fluree" "--no-fallback"
+                "-H:IncludeResources=.*/ahc-default.properties"
+                "-H:IncludeResources=.*/logback.xml"
+                "--enable-url-protocols=http,https"
+                "--report-unsupported-elements-at-runtime"
+                "--initialize-at-build-time"
+                "--allow-incomplete-classpath"
+                "-Dio.netty.noUnsafe=true"
+
+                ;; Most of these initialize-at-run-time classes are from https://github.com/oracle/graal/issues/2050#issuecomment-797689154
+                "--initialize-at-run-time=org.asynchttpclient.RequestBuilderBase,org.asynchttpclient.ntlm.NtlmEngine,io.netty.channel.kqueue.KQueue,io.netty.channel.kqueue.Native,io.netty.channel.kqueue.KQueueEventLoop,io.netty.channel.kqueue.KQueueEventArray,io.netty.util.internal.logging.Log4JLogger,io.netty.channel.epoll.Epoll,io.netty.channel.epoll.Native,io.netty.channel.epoll.EpollEventLoop,io.netty.channel.epoll.EpollEventArray,io.netty.channel.unix.Errors,io.netty.channel.unix.IovArray,io.netty.channel.unix.Limits,io.netty.channel.DefaultFileRegion,io.netty.handler.ssl.ReferenceCountedOpenSslContext,io.netty.handler.ssl.ReferenceCountedOpenSslEngine,io.netty.handler.ssl.JdkNpnApplicationProtocolNegotiator,io.netty.handler.ssl.JettyNpnSslEngine,io.netty.handler.ssl.ConscryptAlpnSslEngine,io.netty.handler.ssl.JettyAlpnSslEngine$ServerEngine,io.netty.handler.ssl.JettyAlpnSslEngine$ClientEngine,org.httpkit.client.ClientSslEngineFactory$SSLHolder,abracad.avro.ClojureData$Vars,org.apache.lucene.analysis.ja.dict.UnknownDictionary$SingletonHolder,org.apache.lucene.analysis.ja.dict.TokenInfoDictionary$SingletonHolder"
+
+                ;; In theory this shouldn't be necessary w/ sufficient type hinting, but there's a bug in the go macro (I think)
+                ;; that causes type hinting to not always work correctly inside them and you can't access fields of Java
+                ;; types like fluree.db.flake.Flake b/c it will resort to reflection and that has to be configured under
+                ;; graalvm native-images. I haven't figured out a minimal reproduction yet though. In the meantime, this fixes it.
+                "-H:ReflectionConfigurationFiles=resources/native-image-config/reflect-config.json"]
+
+   :jvm-opts   ["-Dclojure.compiler.direct-linking=true"]
+   :extra-deps {clj.native-image/clj.native-image
+                {:git/url "https://github.com/taylorwood/clj.native-image.git"
+                 :sha     "4604ae76855e09cdabc0a2ecc5a7de2cc5b775d6"}}}}}
